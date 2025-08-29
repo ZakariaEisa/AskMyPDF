@@ -14,10 +14,18 @@ from transformers import (
 # ---------------------------
 @st.cache_resource
 def load_dpr_models():
-    q_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained("facebook/dpr-question_encoder-single-nq-base")
-    q_encoder = DPRQuestionEncoder.from_pretrained("facebook/dpr-question_encoder-single-nq-base")
-    c_tokenizer = DPRContextEncoderTokenizer.from_pretrained("facebook/dpr-ctx_encoder-single-nq-base")
-    c_encoder = DPRContextEncoder.from_pretrained("facebook/dpr-ctx_encoder-single-nq-base")
+    q_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
+        "facebook/dpr-question_encoder-single-nq-base"
+    )
+    q_encoder = DPRQuestionEncoder.from_pretrained(
+        "facebook/dpr-question_encoder-single-nq-base"
+    )
+    c_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
+        "facebook/dpr-ctx_encoder-single-nq-base"
+    )
+    c_encoder = DPRContextEncoder.from_pretrained(
+        "facebook/dpr-ctx_encoder-single-nq-base"
+    )
     return q_tokenizer, q_encoder, c_tokenizer, c_encoder
 
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
@@ -82,16 +90,27 @@ def build_faiss_index(embeddings):
     index.add(embeddings)
     return index
 
-def generate_answer(question, chunks, index, k=10): 
+def generate_answer(question, chunks, index, k=5, similarity_threshold=0.2):
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
-    retrieved_chunks = [chunks[idx] for idx in indices[0]]
-
     
-    prompt = "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
+    # فلترة حسب التشابه
+    retrieved_chunks = [
+        chunks[idx] for idx, dist in zip(indices[0], distances[0]) if dist >= similarity_threshold
+    ]
     
+    if not retrieved_chunks:
+        return "عذراً، لا يوجد معلومات كافية للإجابة عن هذا السؤال."
 
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device) 
+    # تحسين الـ prompt
+    prompt = (
+        "Answer the following question based on the context below:\n\n"
+        "Context:\n"
+        + "\n".join(retrieved_chunks)
+        + f"\n\nQuestion: {question}\nAnswer:"
+    )
+    
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
     outputs = model.generate(
         **inputs,
         max_new_tokens=200,
@@ -117,16 +136,22 @@ uploaded_file = st.file_uploader("Upload your PDF", type="pdf")
 if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
     pages = read_pdf(uploaded_file)
-    chunks = prepare_chunks(pages, max_words=250)
-    embeddings = embed_chunks(chunks)
-    index = build_faiss_index(embeddings)
+    
+    if not pages:
+        st.error("Try another PDF.")
+    else:
+        chunks = prepare_chunks(pages, max_words=250)
+        embeddings = embed_chunks(chunks)
+        index = build_faiss_index(embeddings)
 
-    question = st.text_input("Ask a question about the PDF:")
-    if st.button("Get Answer") and question:
-        with st.spinner("Generating answer..."):
-            answer = generate_answer(question, chunks, index)
-        st.markdown("**Answer:**")
-        st.write(answer)
+        question = st.text_input("Ask a question about the PDF:")
+        if st.button("Get Answer") and question:
+            with st.spinner("Generating answer..."):
+                answer = generate_answer(question, chunks, index)
+            st.markdown("**Answer:**")
+            st.write(answer)
+
+
 
 
 

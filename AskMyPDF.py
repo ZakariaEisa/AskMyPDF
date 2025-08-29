@@ -20,15 +20,15 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load LLM model (OPT-1.3B)
+# 2. Load LLM model (OPT-1.3B on CPU)
 # ---------------------------
 @st.cache_resource
 def load_llm_model():
     tokenizer = AutoTokenizer.from_pretrained("facebook/opt-1.3b")
     model = AutoModelForCausalLM.from_pretrained(
         "facebook/opt-1.3b",
-        torch_dtype=torch.float16,
-        device_map="auto"
+        torch_dtype=torch.float32,  # CPU يحتاج float32
+        device_map={"": "cpu"}      # force CPU
     )
     return tokenizer, model
 
@@ -74,14 +74,17 @@ def prepare_chunks(pages, max_words=150):
     return all_chunks
 
 def generate_answer(question, chunks, k=5):
+    # Create embeddings for chunks
     embeddings = np.vstack([embed_context(c) for c in chunks])
     index = faiss.IndexFlatIP(768)
     index.add(embeddings)
     
+    # Embed question and search top-k chunks
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
-
+    
+    # Combine context + question for LLM
     combined_context = "Context:\n" + "\n".join(retrieved_chunks) + f"\n\nQuestion: {question}\nAnswer:"
     inputs = tokenizer(combined_context, return_tensors="pt").to(model.device)
     
@@ -112,6 +115,8 @@ if st.button("Get Answer") and question:
         answer = generate_answer(question, chunks)
     st.markdown("**Answer:**")
     st.write(answer)
+
+
 
 
 

@@ -4,7 +4,7 @@ import torch
 import faiss
 import numpy as np
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizer, DPRQuestionEncoder, DPRQuestionEncoderTokenizer
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 # ---------------------------
 # 1. Load DPR models (cached for efficiency)
@@ -20,12 +20,12 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load LLM model (cached for efficiency)
+# 2. Load LLM model (FLAN-T5 Large)
 # ---------------------------
 @st.cache_resource
 def load_llm_model():
-    tokenizer = AutoTokenizer.from_pretrained("tiiuae/falcon-7b-instruct")
-    model = AutoModelForCausalLM.from_pretrained("tiiuae/falcon-7b-instruct", torch_dtype=torch.float16)
+    tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
+    model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
     model.to("cuda" if torch.cuda.is_available() else "cpu")
     return tokenizer, model
 
@@ -47,8 +47,6 @@ def embed_context(context):
     with torch.no_grad():
         embeddings = c_encoder(**inputs).pooler_output
     return embeddings.detach().numpy().astype("float32")
-
-
 
 def read_pdf(file):
     """Read PDF file and return list of pages as text using pypdf."""
@@ -83,43 +81,41 @@ def prepare_chunks(pages, max_words=150):
 def generate_answer(question, chunks, k=5):
     """
     Retrieve top-k chunks relevant to the question using FAISS + DPR,
-    then generate an answer using the LLM.
+    then generate an answer using FLAN-T5 Large.
     """
     # Create embeddings for each chunk
     embeddings = np.vstack([embed_context(c) for c in chunks])
     index = faiss.IndexFlatIP(768)  # DPR embedding dimension
     index.add(embeddings)
-    
+
     # Embed the question and search in FAISS
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
-    
-    # Combine retrieved context and question into prompt for LLM
+
+    # Combine retrieved context and question into prompt
     combined_context = "Context:\n" + "\n".join(retrieved_chunks) + f"\n\nQuestion: {question}\nAnswer:"
-    inputs = tokenizer(combined_context, return_tensors="pt").to(model.device)
-    
+    inputs = tokenizer(combined_context, return_tensors="pt", truncation=True).to(model.device)
+
     # Generate answer
-    outputs = model.generate(**inputs, max_new_tokens=200, do_sample=True, temperature=0.7)
+    outputs = model.generate(**inputs, max_new_tokens=200)
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    answer = answer.split("Answer:")[-1].strip()
     return answer
 
 # ---------------------------
 # 4. Streamlit UI
 # ---------------------------
-st.title("PDF RAG Question Answering")
+st.title("PDF RAG Question Answering (FLAN-T5-Large)")
 
-# File uploader for PDF
 uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
 
 if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
-    
+
     # Read PDF and split pages into text chunks
     pages = read_pdf(uploaded_file)
     chunks = prepare_chunks(pages, max_words=150)
-    
+
     # Input box for user question
     question = st.text_input("Ask a question about the PDF:")
 
@@ -128,6 +124,8 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+
+
 
 
 

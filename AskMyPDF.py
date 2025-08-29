@@ -62,7 +62,7 @@ def read_pdf(file):
             pages.append(text.strip())
     return pages
 
-def chunk_text(text, max_words=250):  # زيادة حجم كل chunk
+def chunk_text(text, max_words=250):  
     words = text.split()
     return [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
 
@@ -82,7 +82,7 @@ def build_faiss_index(embeddings):
     index.add(embeddings)
     return index
 
-def generate_answer(question, chunks, index, k=10):  # زيادة عدد الـ chunks المسترجعة
+def generate_answer(question, chunks, index, k=10): 
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
@@ -91,7 +91,7 @@ def generate_answer(question, chunks, index, k=10):  # زيادة عدد الـ 
     prompt = "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
     prompt += f"Question: {question}\nAnswer:"
 
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)  # زيادة max_length
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device) 
     outputs = model.generate(
         **inputs,
         max_new_tokens=200,
@@ -106,7 +106,7 @@ def generate_answer(question, chunks, index, k=10):  # زيادة عدد الـ 
 # ---------------------------
 # 4. Streamlit UI
 # ---------------------------
-st.title("PDF RAG Question Answering (FLAN-T5-Base)")
+st.title("PDF RAG Question Answering")
 
 st.image(
     "https://i.pinimg.com/736x/b5/69/f0/b569f0f987b17f314bcd64a6019c4641.jpg",
@@ -127,6 +127,7 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks, index)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 
 

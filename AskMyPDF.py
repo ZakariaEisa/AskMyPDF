@@ -1,5 +1,5 @@
 import streamlit as st
-import pdfplumber
+import PyPDF2
 import torch
 import faiss
 import numpy as np
@@ -48,14 +48,19 @@ def embed_context(context):
         embeddings = c_encoder(**inputs).pooler_output
     return embeddings.detach().numpy().astype("float32")
 
+
+
 def read_pdf(file):
-    """Read PDF and return a list of pages as text"""
+    """
+    Read PDF file and return a list of pages as text.
+    Pure Python solution compatible with Streamlit Cloud.
+    """
+    reader = PyPDF2.PdfReader(file)
     pages = []
-    with pdfplumber.open(file) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                pages.append(text.strip())
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            pages.append(text.strip())
     return pages
 
 def chunk_text(text, max_words=150):
@@ -126,4 +131,5 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+
 

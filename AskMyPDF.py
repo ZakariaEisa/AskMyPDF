@@ -1,5 +1,5 @@
 import streamlit as st
-import PyPDF2
+from pypdf import PdfReader
 import torch
 import faiss
 import numpy as np
@@ -51,11 +51,8 @@ def embed_context(context):
 
 
 def read_pdf(file):
-    """
-    Read PDF file and return a list of pages as text.
-    Pure Python solution compatible with Streamlit Cloud.
-    """
-    reader = PyPDF2.PdfReader(file)
+    """Read PDF file and return list of pages as text using pypdf."""
+    reader = PdfReader(file)
     pages = []
     for page in reader.pages:
         text = page.extract_text()
@@ -131,5 +128,6 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 

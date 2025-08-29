@@ -89,7 +89,7 @@ def generate_answer(question, chunks, index, k=5):
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
     
-    prompt += "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
+    prompt  = "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
     prompt += f"Question: {question}\nAnswer:"
 
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
@@ -128,6 +128,7 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks, index)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 
 

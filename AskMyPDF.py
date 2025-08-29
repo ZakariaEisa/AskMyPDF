@@ -88,8 +88,7 @@ def generate_answer(question, chunks, index, k=5):
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
-    # صياغة prompt محسنة لـ FLAN-T5
-    prompt = "Answer the question using ONLY the context below:\n\n"
+    
     prompt += "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
     prompt += f"Question: {question}\nAnswer:"
 
@@ -129,6 +128,7 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks, index)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 
 

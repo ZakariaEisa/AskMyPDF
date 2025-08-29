@@ -1,0 +1,6 @@
+streamlit
+torch
+transformers
+faiss-cpu
+PyMuPDF
+numpy

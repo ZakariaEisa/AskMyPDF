@@ -1,5 +1,5 @@
 import streamlit as st
-import fitz
+import pdfplumber
 import torch
 import faiss
 import numpy as np
@@ -49,13 +49,13 @@ def embed_context(context):
     return embeddings.detach().numpy().astype("float32")
 
 def read_pdf(file):
-    """Read PDF from uploaded file and return a list of pages as text"""
-    doc = fitz.open(stream=file.read(), filetype="pdf")
+    """Read PDF and return a list of pages as text"""
     pages = []
-    for page in doc:
-        text = page.get_text().strip()
-        if len(text) > 0:
-            pages.append(text)
+    with pdfplumber.open(file) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                pages.append(text.strip())
     return pages
 
 def chunk_text(text, max_words=150):
@@ -126,3 +126,4 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+

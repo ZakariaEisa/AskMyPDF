@@ -62,11 +62,11 @@ def read_pdf(file):
             pages.append(text.strip())
     return pages
 
-def chunk_text(text, max_words=150):
+def chunk_text(text, max_words=250):  # زيادة حجم كل chunk
     words = text.split()
     return [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
 
-def prepare_chunks(pages, max_words=150):
+def prepare_chunks(pages, max_words=250):
     all_chunks = []
     for page in pages:
         all_chunks.extend(chunk_text(page, max_words))
@@ -82,20 +82,20 @@ def build_faiss_index(embeddings):
     index.add(embeddings)
     return index
 
-def generate_answer(question, chunks, index, k=5):
-    # استرجاع أفضل الـ chunks
+def generate_answer(question, chunks, index, k=10):  # زيادة عدد الـ chunks المسترجعة
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
-    
-    prompt  = "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
+    # prompt محسّن
+    prompt  = "You are an assistant. Use ONLY the context below to answer the question.\n\n"
+    prompt += "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
     prompt += f"Question: {question}\nAnswer:"
 
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)  # زيادة max_length
     outputs = model.generate(
         **inputs,
-        max_new_tokens=150,
+        max_new_tokens=200,
         do_sample=True,
         temperature=0.7,
         top_p=0.9,
@@ -118,7 +118,7 @@ uploaded_file = st.file_uploader("Upload your PDF", type="pdf")
 if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
     pages = read_pdf(uploaded_file)
-    chunks = prepare_chunks(pages, max_words=150)
+    chunks = prepare_chunks(pages, max_words=250)
     embeddings = embed_chunks(chunks)
     index = build_faiss_index(embeddings)
 
@@ -128,7 +128,6 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks, index)
         st.markdown("**Answer:**")
         st.write(answer)
-
 
 
 

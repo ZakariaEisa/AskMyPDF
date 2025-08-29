@@ -101,8 +101,8 @@ def generate_answer(question, chunks, k=5):
 # ---------------------------
 st.title("PDF RAG Question Answering")
 
-# إضافة الصورة من الرابط المباشر
-st.image("https://i.pinimg.com/736x/b5/69/f0/b569f0f987b17f314bcd64a6019c4641.jpg", use_column_width=True)
+
+st.image("https://i.pinimg.com/736x/b5/69/f0/b569f0f987b17f314bcd64a6019c4641.jpg", use_container_width=True)
 
 uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
 if uploaded_file is not None:
@@ -116,6 +116,7 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 
 

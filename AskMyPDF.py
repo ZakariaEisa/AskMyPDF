@@ -4,7 +4,8 @@ import torch
 import faiss
 import numpy as np
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizer, DPRQuestionEncoder, DPRQuestionEncoderTokenizer
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import requests
+import json
 
 # ---------------------------
 # 1. Load DPR models (cached)
@@ -20,22 +21,7 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load LLM model (GPT-2 on CPU)
-# ---------------------------
-@st.cache_resource
-def load_llm_model():
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    model = AutoModelForCausalLM.from_pretrained(
-        "gpt2",
-        torch_dtype=torch.float32
-    )
-    model.to("cpu")  # force CPU
-    return tokenizer, model
-
-tokenizer, model = load_llm_model()
-
-# ---------------------------
-# 3. Helper functions
+# 2. Helper functions
 # ---------------------------
 def embed_question(question):
     inputs = q_tokenizer(question, return_tensors="pt")
@@ -73,6 +59,33 @@ def prepare_chunks(pages, max_words=150):
         all_chunks.extend(chunks)
     return all_chunks
 
+# ---------------------------
+# 3. Gemini API function
+# ---------------------------
+API_KEY = "AIzaSyAfbh_WGBj_3qE579qCW7LIh1scuKo8nPo"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta2/models/gemini-2.0-flash:generateText"
+
+def query_gemini(prompt, max_output_tokens=200, temperature=0.7):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    data = {
+        "prompt": {"text": prompt},
+        "temperature": temperature,
+        "candidateCount": 1,
+        "maxOutputTokens": max_output_tokens
+    }
+    response = requests.post(GEMINI_URL, headers=headers, json=data)
+    if response.status_code == 200:
+        result = response.json()
+        return result["candidates"][0]["output"]
+    else:
+        return f"Error: {response.status_code} - {response.text}"
+
+# ---------------------------
+# 4. Generate answer using RAG + Gemini
+# ---------------------------
 def generate_answer(question, chunks, k=5):
     # Create embeddings for chunks
     embeddings = np.vstack([embed_context(c) for c in chunks])
@@ -84,24 +97,15 @@ def generate_answer(question, chunks, k=5):
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
     
-    # Combine context + question for LLM
+    # Combine context + question for Gemini
     combined_context = "Context:\n" + "\n".join(retrieved_chunks) + f"\n\nQuestion: {question}\nAnswer:"
-    inputs = tokenizer(combined_context, return_tensors="pt").to(model.device)
-    
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=200,
-        do_sample=True,
-        temperature=0.7
-    )
-    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    answer = answer.split("Answer:")[-1].strip()
+    answer = query_gemini(combined_context)
     return answer
 
 # ---------------------------
-# 4. Streamlit UI
+# 5. Streamlit UI
 # ---------------------------
-st.title("PDF RAG Question Answering")
+st.title("PDF RAG Question Answering with Gemini 2.0 Flash")
 
 uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
 if uploaded_file is not None:

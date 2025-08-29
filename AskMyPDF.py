@@ -62,7 +62,7 @@ def prepare_chunks(pages, max_words=150):
 # ---------------------------
 # 3. Gemini API function
 # ---------------------------
-API_KEY = "AIzaSyAfbh_WGBj_3qE579qCW7LIh1scuKo8nPo"
+API_KEY = "AIzaSyDq-iicJs7jfR2yqqEiC2SgnY0oLcm7qA0"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta2/models/gemini-2.0-flash:generateText"
 
 def query_gemini(prompt, max_output_tokens=200, temperature=0.7):
@@ -119,3 +119,4 @@ if st.button("Get Answer") and question:
         answer = generate_answer(question, chunks)
     st.markdown("**Answer:**")
     st.write(answer)
+

@@ -20,14 +20,14 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load LLM model (OPT-1.3B on CPU)
+# 2. Load LLM model (OPT-350M on CPU)
 # ---------------------------
 @st.cache_resource
 def load_llm_model():
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-1.3b")
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
     model = AutoModelForCausalLM.from_pretrained(
-        "facebook/opt-1.3b",
-        torch_dtype=torch.float32,  # CPU يحتاج float32
+        "facebook/opt-350m",
+        torch_dtype=torch.float32,  # مناسب للـ CPU
         device_map={"": "cpu"}      # force CPU
     )
     return tokenizer, model
@@ -115,6 +115,7 @@ if st.button("Get Answer") and question:
         answer = generate_answer(question, chunks)
     st.markdown("**Answer:**")
     st.write(answer)
+
 
 
 

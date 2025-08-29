@@ -85,10 +85,7 @@ def generate_answer(question, chunks, k=5):
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
-    # عرض chunks المسترجعة
-    st.subheader("Retrieved Chunks")
-    for i, c in enumerate(retrieved_chunks):
-        st.write(f"Chunk {i+1}: {c}")
+   
 
     combined_context = "Context:\n" + "\n".join(retrieved_chunks) + f"\n\nQuestion: {question}\nAnswer:"
     inputs = tokenizer(combined_context, return_tensors="pt").to(device)
@@ -116,4 +113,5 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks)
         st.markdown("**Answer:**")
         st.write(answer)
+
 

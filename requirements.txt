@@ -2,8 +2,9 @@ streamlit
 torch
 transformers
 faiss-cpu
-pypdf
 numpy
+pypdf
+requests
 
 
 

@@ -87,9 +87,8 @@ def generate_answer(question, chunks, index, k=10):  # زيادة عدد الـ 
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
-    # prompt محسّن
-    prompt  = "You are an assistant. Use ONLY the context below to answer the question.\n\n"
-    prompt += "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
+    
+    prompt = "Context:\n" + "\n".join(retrieved_chunks) + "\n\n"
     prompt += f"Question: {question}\nAnswer:"
 
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)  # زيادة max_length
@@ -128,6 +127,7 @@ if uploaded_file is not None:
             answer = generate_answer(question, chunks, index)
         st.markdown("**Answer:**")
         st.write(answer)
+
 
 
 

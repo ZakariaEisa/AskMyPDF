@@ -100,7 +100,7 @@ def generate_answer(question, chunks, index, k=5, similarity_threshold=0.2):
     ]
     
     if not retrieved_chunks:
-        return "عذراً، لا يوجد معلومات كافية للإجابة عن هذا السؤال."
+        return "Sorry, I cant answer this."
 
     # تحسين الـ prompt
     prompt = (
@@ -125,7 +125,7 @@ def generate_answer(question, chunks, index, k=5, similarity_threshold=0.2):
 # ---------------------------
 # 4. Streamlit UI
 # ---------------------------
-st.title("PDF RAG Question Answering")
+st.title("🔍 PDF RAG Question Answering")
 
 st.image(
     "https://i.pinimg.com/736x/b5/69/f0/b569f0f987b17f314bcd64a6019c4641.jpg",
@@ -150,6 +150,7 @@ if uploaded_file is not None:
                 answer = generate_answer(question, chunks, index)
             st.markdown("**Answer:**")
             st.write(answer)
+
 
 
 

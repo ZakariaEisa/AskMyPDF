@@ -20,16 +20,16 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load LLM model (OPT-350M on CPU)
+# 2. Load LLM model (GPT-2 on CPU)
 # ---------------------------
 @st.cache_resource
 def load_llm_model():
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
     model = AutoModelForCausalLM.from_pretrained(
-        "facebook/opt-350m",
-        torch_dtype=torch.float32,  # مناسب للـ CPU
-        device_map={"": "cpu"}      # force CPU
+        "gpt2",
+        torch_dtype=torch.float32
     )
+    model.to("cpu")  # force CPU
     return tokenizer, model
 
 tokenizer, model = load_llm_model()
@@ -115,10 +115,3 @@ if st.button("Get Answer") and question:
         answer = generate_answer(question, chunks)
     st.markdown("**Answer:**")
     st.write(answer)
-
-
-
-
-
-
-

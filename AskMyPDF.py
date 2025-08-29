@@ -3,14 +3,11 @@ from pypdf import PdfReader
 import torch
 import faiss
 import numpy as np
-from transformers import (
-    DPRContextEncoder, DPRContextEncoderTokenizer,
-    DPRQuestionEncoder, DPRQuestionEncoderTokenizer,
-    AutoTokenizer, AutoModelForCausalLM
-)
+from transformers import DPRContextEncoder, DPRContextEncoderTokenizer, DPRQuestionEncoder, DPRQuestionEncoderTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # ---------------------------
-# 1. Load DPR models (cached for efficiency)
+# 1. Load DPR models (cached)
 # ---------------------------
 @st.cache_resource
 def load_dpr_models():
@@ -23,15 +20,14 @@ def load_dpr_models():
 q_tokenizer, q_encoder, c_tokenizer, c_encoder = load_dpr_models()
 
 # ---------------------------
-# 2. Load DeepSeek-R1 (Distill-Qwen-1.5B)
+# 2. Load LLM model (OPT-1.3B)
 # ---------------------------
 @st.cache_resource
 def load_llm_model():
-    model_id = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-1.3b")
     model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        "facebook/opt-1.3b",
+        torch_dtype=torch.float16,
         device_map="auto"
     )
     return tokenizer, model
@@ -78,58 +74,44 @@ def prepare_chunks(pages, max_words=150):
     return all_chunks
 
 def generate_answer(question, chunks, k=5):
-    # Build FAISS index
     embeddings = np.vstack([embed_context(c) for c in chunks])
-    index = faiss.IndexFlatIP(768)  # DPR embedding dimension
+    index = faiss.IndexFlatIP(768)
     index.add(embeddings)
-
-    # Search top-k
+    
     q_embedding = embed_question(question)
     distances, indices = index.search(q_embedding, k)
     retrieved_chunks = [chunks[idx] for idx in indices[0]]
 
-    # Prepare prompt
-    combined_context = (
-        "You are a helpful assistant. Use the following context to answer the question.\n\n"
-        "Context:\n" + "\n".join(retrieved_chunks) +
-        f"\n\nQuestion: {question}\nAnswer:"
-    )
-
+    combined_context = "Context:\n" + "\n".join(retrieved_chunks) + f"\n\nQuestion: {question}\nAnswer:"
     inputs = tokenizer(combined_context, return_tensors="pt").to(model.device)
-
-    # Generate answer with DeepSeek-R1
+    
     outputs = model.generate(
         **inputs,
-        max_new_tokens=300,
+        max_new_tokens=200,
         do_sample=True,
-        temperature=0.7,
-        top_p=0.9
+        temperature=0.7
     )
-
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    answer = answer.split("Answer:")[-1].strip()
     return answer
 
 # ---------------------------
 # 4. Streamlit UI
 # ---------------------------
-st.title("📘 PDF RAG Question Answering (DeepSeek-R1-Distill-Qwen-1.5B)")
+st.title("PDF RAG Question Answering")
 
 uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
-
 if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
-
     pages = read_pdf(uploaded_file)
     chunks = prepare_chunks(pages, max_words=150)
 
-    question = st.text_input("Ask a question about the PDF:")
-
-    if st.button("Get Answer") and question:
-        with st.spinner("Generating answer..."):
-            answer = generate_answer(question, chunks)
-        st.markdown("**Answer:**")
-        st.write(answer)
-
+question = st.text_input("Ask a question about the PDF:")
+if st.button("Get Answer") and question:
+    with st.spinner("Generating answer..."):
+        answer = generate_answer(question, chunks)
+    st.markdown("**Answer:**")
+    st.write(answer)
 
 
 

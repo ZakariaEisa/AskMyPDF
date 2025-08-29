@@ -104,16 +104,16 @@ def generate_answer(question, chunks, index, k=5, similarity_threshold=0.2):
 
     # تحسين الـ prompt
     prompt = (
-        "Answer the following question based on the context below:\n\n"
+        "Answer the following question in detail based on the context below:\n\n"
         "Context:\n"
         + "\n".join(retrieved_chunks)
-        + f"\n\nQuestion: {question}\nAnswer:"
+        + f"\n\nQuestion: {question}\nAnswer in a detailed manner:"
     )
     
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
     outputs = model.generate(
         **inputs,
-        max_new_tokens=200,
+        max_new_tokens=500,
         do_sample=True,
         temperature=0.7,
         top_p=0.9,
@@ -150,6 +150,7 @@ if uploaded_file is not None:
                 answer = generate_answer(question, chunks, index)
             st.markdown("**Answer:**")
             st.write(answer)
+
 
 
 
